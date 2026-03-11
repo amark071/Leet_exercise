@@ -1,0 +1,9 @@
+/home/master/Leet_exercise/cuda/build/CMakeFiles/func_cuda.dir
+/home/master/Leet_exercise/cuda/build/CMakeFiles/vector_add.dir
+/home/master/Leet_exercise/cuda/build/CMakeFiles/run_all.dir
+/home/master/Leet_exercise/cuda/build/CMakeFiles/run_vector_add.dir
+/home/master/Leet_exercise/cuda/build/CMakeFiles/show_logs.dir
+/home/master/Leet_exercise/cuda/build/CMakeFiles/clean_logs.dir
+/home/master/Leet_exercise/cuda/build/CMakeFiles/test_all.dir
+/home/master/Leet_exercise/cuda/build/CMakeFiles/edit_cache.dir
+/home/master/Leet_exercise/cuda/build/CMakeFiles/rebuild_cache.dir

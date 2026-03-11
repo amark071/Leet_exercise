@@ -1,0 +1,2 @@
+/usr/bin/ar qc libfunc_cuda.a CMakeFiles/func_cuda.dir/func.cu.o
+/usr/bin/ranlib libfunc_cuda.a

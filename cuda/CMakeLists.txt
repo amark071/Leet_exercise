@@ -27,7 +27,7 @@ set_target_properties(func_cuda PROPERTIES
     CUDA_COMPILE_OPTIONS "-lineinfo"
 )
 
-# 定义5个可执行文件列表
+# 定义可执行文件列表
 set(EXECUTABLES 
     vector_add
 )

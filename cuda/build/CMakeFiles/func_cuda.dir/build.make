@@ -77,7 +77,7 @@ CMakeFiles/func_cuda.dir/func.cu.o: CMakeFiles/func_cuda.dir/includes_CUDA.rsp
 CMakeFiles/func_cuda.dir/func.cu.o: /home/master/Leet_exercise/cuda/func.cu
 CMakeFiles/func_cuda.dir/func.cu.o: CMakeFiles/func_cuda.dir/compiler_depend.ts
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/master/Leet_exercise/cuda/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CUDA object CMakeFiles/func_cuda.dir/func.cu.o"
-	/usr/local/cuda-11.8/bin/nvcc -forward-unknown-to-host-compiler $(CUDA_DEFINES) $(CUDA_INCLUDES) $(CUDA_FLAGS) -MD -MT CMakeFiles/func_cuda.dir/func.cu.o -MF CMakeFiles/func_cuda.dir/func.cu.o.d -x cu -rdc=true -c /home/master/Leet_exercise/cuda/func.cu -o CMakeFiles/func_cuda.dir/func.cu.o
+	/usr/local/cuda-12.6/bin/nvcc -forward-unknown-to-host-compiler $(CUDA_DEFINES) $(CUDA_INCLUDES) $(CUDA_FLAGS) -MD -MT CMakeFiles/func_cuda.dir/func.cu.o -MF CMakeFiles/func_cuda.dir/func.cu.o.d -x cu -rdc=true -c /home/master/Leet_exercise/cuda/func.cu -o CMakeFiles/func_cuda.dir/func.cu.o
 
 CMakeFiles/func_cuda.dir/func.cu.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CUDA source to CMakeFiles/func_cuda.dir/func.cu.i"

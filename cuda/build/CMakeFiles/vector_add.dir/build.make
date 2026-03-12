@@ -96,7 +96,7 @@ vector_add_EXTERNAL_OBJECTS =
 CMakeFiles/vector_add.dir/cmake_device_link.o: CMakeFiles/vector_add.dir/vector_add.cpp.o
 CMakeFiles/vector_add.dir/cmake_device_link.o: CMakeFiles/vector_add.dir/build.make
 CMakeFiles/vector_add.dir/cmake_device_link.o: libfunc_cuda.a
-CMakeFiles/vector_add.dir/cmake_device_link.o: /usr/local/cuda-11.8/lib64/libcudart_static.a
+CMakeFiles/vector_add.dir/cmake_device_link.o: /usr/local/cuda-12.6/lib64/libcudart_static.a
 CMakeFiles/vector_add.dir/cmake_device_link.o: /usr/lib/x86_64-linux-gnu/librt.a
 CMakeFiles/vector_add.dir/cmake_device_link.o: CMakeFiles/vector_add.dir/deviceLinkLibs.rsp
 CMakeFiles/vector_add.dir/cmake_device_link.o: CMakeFiles/vector_add.dir/deviceObjects1.rsp
@@ -118,7 +118,7 @@ vector_add_EXTERNAL_OBJECTS =
 vector_add: CMakeFiles/vector_add.dir/vector_add.cpp.o
 vector_add: CMakeFiles/vector_add.dir/build.make
 vector_add: libfunc_cuda.a
-vector_add: /usr/local/cuda-11.8/lib64/libcudart_static.a
+vector_add: /usr/local/cuda-12.6/lib64/libcudart_static.a
 vector_add: /usr/lib/x86_64-linux-gnu/librt.a
 vector_add: CMakeFiles/vector_add.dir/cmake_device_link.o
 vector_add: CMakeFiles/vector_add.dir/link.txt

@@ -4,6 +4,15 @@ project(VectorAdd LANGUAGES CUDA CXX)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CUDA_STANDARD 14)
 
+# ========== 新增：Nsight Compute 需要的调试选项 ==========
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -lineinfo")           # 行号信息（必须）
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")                     # C++ 调试信息
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -g -G")                # CUDA 调试信息（可选，影响性能）
+
+# 或者更现代的方式（CMake 3.18+）
+set(CMAKE_CUDA_FLAGS_DEBUG "-g -G -lineinfo")
+set(CMAKE_CUDA_FLAGS_RELWITHDEBINFO "-O2 -g -lineinfo")
+
 # 查找CUDA
 find_package(CUDA REQUIRED)
 include_directories(${CUDA_INCLUDE_DIRS})
@@ -14,6 +23,8 @@ add_library(func_cuda STATIC func.cu)
 set_target_properties(func_cuda PROPERTIES
     CUDA_SEPARABLE_COMPILATION ON
     POSITION_INDEPENDENT_CODE ON
+    # 新增：确保有调试信息
+    CUDA_COMPILE_OPTIONS "-lineinfo"
 )
 
 # 定义5个可执行文件列表

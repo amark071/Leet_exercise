@@ -3,7 +3,7 @@ set -e
 
 cd "$(dirname $0)"
 LOG_DIR="/home/master/Leet_exercise/cuda/build/logs"
-TIMESTAMP="20260311_111254"
+TIMESTAMP="20260311_225941"
 
 # 确保日志目录存在
 mkdir -p "${LOG_DIR}"
@@ -17,7 +17,7 @@ echo "========================================" | tee -a "${ALL_LOG}"
 echo "" | tee -a "${ALL_LOG}"
 
 
-echo ">>> [$(expr 66 + 1)/5] Running vector_add..." | tee -a "${ALL_LOG}"
+echo ">>> [$(expr 77 + 1)/5] Running vector_add..." | tee -a "${ALL_LOG}"
 echo "---------- vector_add output ----------" | tee -a "${ALL_LOG}"
 if /home/master/Leet_exercise/cuda/build/vector_add 2>&1 | tee -a "${ALL_LOG}"; then
     echo "[✓ SUCCESS] vector_add" | tee -a "${ALL_LOG}"

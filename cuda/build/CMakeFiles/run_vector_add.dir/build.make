@@ -68,7 +68,7 @@ include CMakeFiles/run_vector_add.dir/progress.make
 
 CMakeFiles/run_vector_add: vector_add
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --blue --bold --progress-dir=/home/master/Leet_exercise/cuda/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Running vector_add..."
-	/bin/bash -c "mkdir -p /home/master/Leet_exercise/cuda/build/logs && /home/master/Leet_exercise/cuda/build/vector_add 2>&1 | tee /home/master/Leet_exercise/cuda/build/logs/vector_add_20260311_111254.log"
+	/bin/bash -c "mkdir -p /home/master/Leet_exercise/cuda/build/logs && /home/master/Leet_exercise/cuda/build/vector_add 2>&1 | tee /home/master/Leet_exercise/cuda/build/logs/vector_add_20260311_225941.log"
 
 CMakeFiles/run_vector_add.dir/codegen:
 .PHONY : CMakeFiles/run_vector_add.dir/codegen

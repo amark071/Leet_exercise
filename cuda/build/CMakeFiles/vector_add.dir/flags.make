@@ -4,7 +4,7 @@
 # compile CXX with /usr/bin/c++
 CXX_DEFINES = 
 
-CXX_INCLUDES = -I/usr/local/cuda-11.8/include -I/home/master/Leet_exercise/cuda
+CXX_INCLUDES = -I/usr/local/cuda-12.6/include -I/home/master/Leet_exercise/cuda
 
-CXX_FLAGS = -std=gnu++14
+CXX_FLAGS =  -g -std=gnu++14
 

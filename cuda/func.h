@@ -7,7 +7,7 @@ extern "C" {
 
 void vector_add(const float* A, const float* B, float* C, int N);
 
-void matrix_multiplication(const float* A, const float* B, float* C, int M, int N, int K)
+void matrix_multiplication(const float* A, const float* B, float* C, int M, int N, int K);
 
 #ifdef __cplusplus
 }

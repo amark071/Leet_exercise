@@ -4,6 +4,112 @@
 
 #### GPU硬件与分布式基础
 
+##### 结构基础
+
+- GPU硬件架构中最核心的组件是图形处理核心（CUDA core），一个GPU通常包含数百到数千个CUDA core，并拥（Multiprocessors）以支持高度并行计算。每个CUDA core能够系列指令，实现高效并行计算。
+
+- 在GPU出现之前，CPU一直负责着计算机中主要的运算工作，包括多媒体的处理工作。CPU的架构是有利于X86指令集的串行架构，CPU从设计思路上适合尽可能快的完成一个任务。
+
+  - 但是如此设计的CPU的缺陷也显而易见：多媒体计算通常要求较高的运算密度、多并发线程和频繁地存储器访问，而由于X86平台中CISC（Complex Instruction Set Computer）架构中暂存器数量有限，CPU并不适合处理这种类型的工作。
+
+  - 对于GPU来说，它的任务是在屏幕上合成显示数百万个像素的图像，也就是同时拥有几百万个任务需要并行处理，因此GPU被设计成可并行处理很多任务，而不是像CPU那样完成单任务。
+
+- 因此CPU和GPU架构差异很大，CPU功能模块很多，能适应复杂运算环境；GPU构成则相对简单，目前流处理器和显存控制器占据了绝大部分晶体管。
+
+  - CPU中大部分晶体管主要用于构建控制电路（比如分支预测等）和Cache，只有少部分的晶体管来完成实际的运算工作。而GPU的控制相对简单，且对Cache的需求小，所以大部分晶体管可以组成各类专用电路、多条流水线，使得GPU的计算速度有了突破性的飞跃，拥有了更强大的处理浮点运算的能力。 
+
+<img src="flg/3.png" alt="3" style="zoom:50%;" />
+
+- 为充分利用GPU的计算能力，NVIDIA在2006年推出了CUDA（ComputeUnifiedDevice Architecture，统一计算设备架构）这一编程模型。CUDA是一种由NVIDIA推出的通用并行计算架构，该架构使GPU能够解决复杂的计算问题。它包含了CUDA指令集架构（ISA）以及GPU内部的并行计算引擎。开发人员现在可以使用C语言来为CUDA架构编写程序。
+
+##### 显存技术
+
+- 显存（Graphics Memory）是GPU中重要的组成部分，用于存储图像、计算结果、模型参数等数据。主流的显存技术有GDDR（Graphics Double Data Rate）和HBM（High Bandwidth Memory）。GDDR具有较大的容量和较低的成本，适用于大规模图形处理；而HBM则具有更高的带宽和更低的功耗，适用于高性能计算和深度学习等任务。
+- 共享内存
+
+<img src="flg/4.png" alt="4" style="zoom:50%;" />
+
+- GPU中每个线程对应一个register,而且对程序员不可见，**每个block对应一个share memry**，这个由程序操作，每个网格对应一个global memory，也就是说，所有线程使用同一个global memroy
+
+- Shared Memory的核心价值在于减少全局内存访问次数和加速块内线程协作。
+
+  - 全局内存（Global Memory）访问延迟约为数百个时钟周期，而 Shared Memory 仅需数十个时钟周期。当多个线程需要反复读取同一份全局内存数据时，将数据一次性加载到 Shared Memory 中供块内线程复用，能大幅降低全局内存访问次数，是性能提升的核心手段。 
+  - 不同于全局内存的跨块共享特性，Shared Memory 是线程块级别的 “私有高速 缓存 ”，块内线程可通过它快速交换中间计算结果，无需通过全局内存中转，降低通信延迟。
+
+  - 全局内存的访问效率高度依赖 “合并访问”（Coalesced Access），而 Shared Memory 可作为 “中转层”，将非合并的全局内存访问转换为合并访问，再在 Shared Memory 内重组数据供线程使用。
+    - 以矩阵转置为例：如果我们按照行读取然后给每个县城分配转置任务就是按列来写，这样因为行是连续存储的，会直接受到硬件优化，所以很快；但列之间的地址是跳跃的，所以速度很慢。于是我们引入共享内存，先按行读取内容到共享内存里，在共享内存里操作成列主元，再分配任务，这样就会很快。
+
+- 共享内存使用方法：
+
+```cpp
+__global__ void kernelFunction(float *input, float *output) {
+    __shared__ float sharedData[256]; // 声明一个大小为 256 的共享内存数组
+    int tid = threadIdx.x;
+    // 从全局内存加载数据到共享内存
+    sharedData[tid] = input[tid];
+    __syncthreads(); // 确保所有线程都完成了加载
+    // 进行一些计算
+    sharedData[tid] = sharedData[tid] * 2.0f;
+    __syncthreads(); // 确保所有线程都完成了计算
+    // 将结果写回全局内存
+    output[tid] = sharedData[tid];
+}
+```
+
+- Shared Memory 优化：
+  - Shared Memory 是由多个 Memory Bank 组成的，如果多个线程同时访问同一个 Memory Bank，则会发生 “Bank Conflict”（存储体冲突），导致访问速度降低。尽量设计内存访问模式，使得线程访问不同的存储体，来避免冲突。
+  - 动态共享内存（extern **shared**）的核心优势是灵活适配不同 Tile 大小 / 数据类型，避免静态声明的内存浪费。
+
+```cpp
+__global__ void multiTypeSharedKernel(float *input, int *output, int n) {
+    // 声明动态共享内存（无类型）
+    extern __shared__ char sharedBuffer[];
+    // 拆分缓冲区为不同类型的共享内存
+    float *sharedFloat = (float*)sharedBuffer;
+    int *sharedInt = (int*)(sharedFloat + 256); // 偏移 256 个 float 大小
+
+    // 使用不同类型的共享内存
+    sharedFloat[threadIdx.x] = input[threadIdx.x];
+    sharedInt[threadIdx.x] = (int)sharedFloat[threadIdx.x];
+    __syncthreads();
+
+    output[threadIdx.x] = sharedInt[threadIdx.x];
+}
+
+// 调用时指定总大小：256*float + 256*int
+kernel<<<1, 256, 256*sizeof(float) + 256*sizeof(int)>>>(input, output, n);
+
+// ==============================================================================
+
+// 运行时获取设备的 Shared Memory 每块最大容量
+int maxSharedMemPerBlock;
+cudaDeviceGetAttribute(&maxSharedMemPerBlock, cudaDevAttrMaxSharedMemoryPerBlock, 0);
+
+// 计算最大可使用的 Tile 大小（以 float 为例）
+int maxTileSize = sqrt(maxSharedMemPerBlock / sizeof(float));
+// 向下取整为 16 的倍数（符合 CUDA 线程块最佳实践）
+maxTileSize = (maxTileSize / 16) * 16;
+
+// 调用核函数时动态指定共享内存大小
+dim3 threads(maxTileSize, maxTileSize);
+size_t sharedMemSize = maxTileSize * maxTileSize * sizeof(float);
+matrixMultiplyWithShared<<<numBlocks, threads, sharedMemSize>>>(d_A, d_B, d_C, N);
+```
+
+
+
+##### 评价指标
+
+- 算力是衡量GPU性能的关键指标之一，表示每秒执行的浮点运算次数。常用的衡量单位是FLOPS。
+
+- 计算能力（吞吐量）：通常关心的是32位浮点计算能力。16位浮点训练也开始流行，如果只做预测的话也可以用8位整数。
+
+- 显存大小：当模型越大，或者训练时的批量越大时，所需要的GPU内存就越多。
+
+- 显存位宽：位数越大则瞬间所能传输的数据量越大
+
+- 显存带宽：只有当内存带宽足够时才能充分发挥计算能力。
+
 <div style="page-break-after: always;"></div>
 
 #### CUDA开发基础
@@ -331,52 +437,186 @@ extern "C" void matrix_multiplication(const float* A, const float* B, float* C, 
 - dim3是 CUDA 中用于定义**三维网格和线程块维度**的特殊数据类型，其由三个无符号整数组成，未指定的部分默认为1。
 - 一般来说行对应的是y，列对应的是x。
 
-上述的思路中看上去不错，结果也是对的，但还是有很多可以优化的地方：
+上述的思路中看上去不错，结果也是对的，但还是有很多可以优化的地方。
+
+**题目二.五：GEMM算子的终极优化**
+
+- 题目二中给出的解答是相当naive的版本，决非我们需要的内容。
+
+**1 读取开销**
+
+- 分析代码我们可以看到，计算一次 FMA（乘累加）之前需要读一次 A 和读一次 B，众所周知，读取 Global Memory 的代价很大，通常都需要几百个 cycle（时钟周期），而计算一次 FMA 通常只需要几个 cycle，大量的时间被花费在了访存上。
+  - 于是立马想到，可以将 A 和 B 矩阵先搬运到 Shared Memory 中降低访存的开销，这的确是一个很好的思路，但是这只能将访存代价从几百 cycle 降低到几十 cycle，并不改变问题的本质。问题的关键在于主体循环由两条 Load 指令与一条 FMA 指令构成，计算指令只占总体的 1/3，计算访存比过低，最终导致了访存延迟不能被隐藏，从而性能不理想。
+
+- 于是我们想到如下解决方案：
+  - 采用共享内存，一次读一个子块防止每次重读Global Memory浪费时间。
+- 一个巧妙的改进：
 
 ```cpp
-__global__ void matrix_multiplication_optimized(const float* A, const float* B, float* C, 
-                                                int M, int N, int K) {
-    // 分块维度（通常16x16或32x32，需根据GPU架构调整）
-    const int TILE_DIM = 16;
-    __shared__ float As[TILE_DIM][TILE_DIM];
-    __shared__ float Bs[TILE_DIM][TILE_DIM]; // 缓存B的转置块
+__global__ void matrix_multiplication_kernel_1(int M, int N, int K, 
+                                    const float* __restrict__ A, 
+                                    const float* __restrict__ B, 
+                                    float* __restrict__ C) {
+  int BLOCK = 16;
+  const int tx = threadIdx.x;
+  const int ty = threadIdx.y;
+  const int bx = blockIdx.x;
+  const int by = blockIdx.y;
+  // 注意到这种写法的前提是共享内存的块大小和线程块大小一致
+  const int row = by * BLOCK + ty;
+  const int col = bx * BLOCK + tx;
 
-    int bx = blockIdx.x; int by = blockIdx.y;
-    int tx = threadIdx.x; int ty = threadIdx.y;
+  if (row >= M || col >= K) return;
 
-    // 计算当前线程负责的输出元素坐标
-    int row = by * TILE_DIM + ty;
-    int col = bx * TILE_DIM + tx;
+  __shared__ float Ashare[BLOCK][BLOCK];
+  __shared__ float Bshare[BLOCK][BLOCK];
 
-    float sum = 0.0f;
-    // 循环遍历N维度，每次处理TILE_DIM大小的分块
-    for (int t = 0; t < (N + TILE_DIM - 1) / TILE_DIM; ++t) {
-        // 协作加载A分块（行优先，连续）
-        if (row < M && (t*TILE_DIM + tx) < N)
-            As[ty][tx] = A[row * N + t*TILE_DIM + tx];
-        else
-            As[ty][tx] = 0.0f;
+  float sum = 0.0f;
 
-        // 协作加载B分块，并转置存入Bs（使Bs行访问对应B列访问）
-        if ((t*TILE_DIM + ty) < N && col < K)
-            Bs[ty][tx] = B[(t*TILE_DIM + ty) * K + col];
-        else
-            Bs[ty][tx] = 0.0f;
+  for (int t = 0; t < N; t += BLOCK) {
+    Ashare[ty][tx] = A[row * N + t + tx];
+    Bshare[tx][ty] = B[(t + ty) * K + col];
+    __syncthreads();
+		// 注意这里的一个小巧思：我们输入的时候把B转置一下，这样在之后累加乘的时候，读取的就是行主元的B了
 
+  #pragma unroll
+  // 展开循环，加速 
+    for (int k = 0; k < BLOCK; ++k) {
+      sum += Ashare[ty][k] * Bshare[tx][k];
+    }
+    __syncthreads();
+  }
+
+  C[row * K + col] = sum;
+}
+```
+
+```cpp
+extern "C" void matrix_multiplication(const float* A, const float* B, float* C, int M, int N, int K) {
+    const int BLOCK = 16;
+    dim3 threadsPerBlock(BLOCK, BLOCK); // 必须与内核的BLOCK一致
+    dim3 blocksPerGrid(
+        (K + BLOCK - 1) / BLOCK, // 列方向块数（向上取整）
+        (M + BLOCK - 1) / BLOCK  // 行方向块数（向上取整）
+    );
+
+    matrix_multiplication_kernel_1<<<blocksPerGrid, threadsPerBlock>>>(A, B, C, M, N, K);
+		cudaDeviceSynchronize();
+}
+```
+
+- 优化内核：每线程计算2x2块：
+
+```cpp
+// 优化内核：每线程计算2x2块
+__global__ void matrix_multiplication_kernel_2x2((const float* A, const float* B, float* C, int M, int N, int K) {
+  
+    const int tx = threadIdx.x;
+    const int ty = threadIdx.y;
+    const int bx = blockIdx.x;
+    const int by = blockIdx.y;
+  
+    // 计算当前线程负责的C子块的起始位置（2x2块），注意线程块的大小已经减半了
+    const int row_start = by * BLOCK_SIZE + ty * 2;  // 每个线程负责2行
+    const int col_start = bx * BLOCK_SIZE + tx * 2;  // 每个线程负责2列
+
+    if (row_start >= M || col_start >= K) return;
+  
+    // 共享内存
+    __shared__ float Ashare[BLOCK_SIZE][BLOCK_SIZE];  // A分块，行主序
+    __shared__ float Bshare[BLOCK_SIZE][BLOCK_SIZE];  // B转置后存储，行主序
+  
+    // 每个线程的私有2x2寄存器累积器
+    float c_reg[2][2] = {{0.0f, 0.0f}, {0.0f, 0.0f}};
+  
+    // 外层循环：遍历N维度，每次加载BLOCK×BLOCK分块
+    for (int t = 0; t < N; t += BLOCK_SIZE) {
         __syncthreads();
-
-        // 累加：从As行和Bs行（原B列）读取，均为连续访问
-        for (int i = 0; i < TILE_DIM; ++i) {
-            sum += As[ty][i] * Bs[i][tx];
+      
+        // ========== 协作加载A到共享内存（行主序） ==========
+        // 每个线程加载2×2个A元素（因为线程块大小是BLOCK/2×BLOCK/2，需要协作填满BLOCK×BLOCK）
+        // 共享内存位置：Ashare[ty*2 + i][tx*2 + j]
+        // 全局内存位置：A[(row_start + i) * N + (t + tx*2 + j)]
+        for (int i = 0; i < 2; ++i) {
+            for (int j = 0; j < 2; ++j) {
+                int smem_row = ty * 2 + i;
+                int smem_col = tx * 2 + j;
+                int a_row = row_start + i;
+                int a_col = t + tx * 2 + j;
+              
+                // 边界保护：如果全局内存越界，填0
+                if (smem_row < BLOCK_SIZE && smem_col < BLOCK_SIZE && 
+                    a_row < M && a_col < N) {
+                    Ashare[smem_row][smem_col] = A[a_row * N + a_col];
+                } else {
+                    Ashare[smem_row][smem_col] = 0.0f;
+                }
+            }
         }
+      
+        // ========== 协作加载B到共享内存并转置 ==========
+        // 我们希望Bshare存储的是B的转置，这样计算时Bshare[k][tx*2]就是连续访问
+        // 所以加载时：Bshare[tx*2 + i][ty*2 + j] = B[(t + ty*2 + i) * K + (col_start + j)]
+        for (int i = 0; i < 2; ++i) {
+            for (int j = 0; j < 2; ++j) {
+                int smem_row = tx * 2 + i;   // 注意：tx作为行索引（转置）
+                int smem_col = ty * 2 + j;
+                int b_row = t + ty * 2 + i;
+                int b_col = col_start + j;
+              
+                if (smem_row < BLOCK_SIZE && smem_col < BLOCK_SIZE && 
+                    b_row < K && b_col < N) {
+                    Bshare[smem_row][smem_col] = B[b_row * N + b_col];  // B是行主序
+                } else {
+                    Bshare[smem_row][smem_col] = 0.0f;
+                }
+            }
+        }
+      
+        __syncthreads();
+      
+        // ========== 内层循环：计算外积 ==========
+        // 遍历BLOCK_SIZE次，每次计算2x2外积
+        for (int k = 0; k < BLOCK_SIZE; ++k) {
+            // 从共享内存加载：A的一列（2个元素）和B的一行（2个元素）
+            // 注意：由于Bshare是转置存储，Bshare[k][tx*2]对应原B的列
+            float a_reg[2] = {
+                Ashare[ty * 2][k],      // A的第 (ty*2) 行，第 k 列
+                Ashare[ty * 2 + 1][k]   // A的第 (ty*2+1) 行，第 k 列
+            };
+            float b_reg[2] = {
+                Bshare[k][tx * 2],      // Bshare的第 k 行，第 (tx*2) 列（对应原B的第k行，第(col_start+tx*2)列）
+                Bshare[k][tx * 2 + 1]   // Bshare的第 k 行，第 (tx*2+1) 列
+            };
+          
+            // 2x2外积：c_reg += a_reg * b_reg^T
+            #pragma unroll
+            for (int i = 0; i < 2; ++i) {
+                #pragma unroll
+                for (int j = 0; j < 2; ++j) {
+                    c_reg[i][j] += a_reg[i] * b_reg[j];
+                }
+            }
+        }
+      
         __syncthreads();
     }
-
-    if (row < M && col < K) {
-        C[row * K + col] = sum;
+  
+    // ========== 写回C矩阵 ==========
+    // 每个线程写2x2个元素，注意边界
+    if (row_start < M && col_start < K) {
+        C[row_start * K + col_start] = c_reg[0][0];
+    }
+    if (row_start < M && col_start + 1 < K) {
+        C[row_start * K + col_start + 1] = c_reg[0][1];
+    }
+    if (row_start + 1 < M && col_start < K) {
+        C[(row_start + 1) * K + col_start] = c_reg[1][0];
+    }
+    if (row_start + 1 < M && col_start + 1 < K) {
+        C[(row_start + 1) * K + col_start + 1] = c_reg[1][1];
     }
 }
 ```
 
-
-
+// 下一日首要目标：先跑通这个设计
